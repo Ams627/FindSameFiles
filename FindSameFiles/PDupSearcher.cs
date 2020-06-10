@@ -76,6 +76,13 @@ namespace FindSameFiles
                         let fileList = (from file in lubucket select file.Filename).ToList()
                         select fileList).ToList();
 
+            var dups2 = (from lookup in shaLookups
+                        from lubucket in lookup
+                        where lubucket.Count() > 1
+                        select (from fileentry in lubucket select fileentry.Filename).ToList()
+                        ).ToList();
+
+
             return dups;
         }
 

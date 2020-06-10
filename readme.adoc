@@ -1,0 +1,24 @@
+= Find Duplicate Files
+
+A very basic example that will find duplicate files by comparing taking the SHA-1 of groups of files which have the same length.
+
+The basic approach is:
+
+. Create a `Dictionary<length, List<string>>` intended to map each file length to a list of filenames
+. Scan the directory and all subdirectories (recursively but using a Stack
+. When we find that we add a second or subsequent file to the Dictionary for the same length we queue all of those same
+length entries for hashing.
+. Hashing is performed in a different thread - the hashing tasks or _engines_ are started using `Task.Run`. We start as many tasks as there 
+are processors in the system.
+. We use `BlockingCollection` to queue files for hashing. Effortless parallelism using the producer-consumer pattern!
+. When there are no more files to hash, we call `CompleteAdding` on the `BlockingCollection` to indicate that the **producer** is finished.
+. We then wait for all the hashing engines to stop using `Task.WaitAll`.
+
+We now have a Dictionary indicating groups of files having the same length. We are, however, **no longer interested in length** since 
+two files of the same length are unlikely to contain the same data in the general case.
+
+So we take the values from the `Dictionary` ignoring the keys. We convert each value from the Dictionary to a Lookup using `ToLookup`
+on its SHA-1 hash. We end up with an `IEnumerable<Lookup<byte[],...` which we transform into a `List<List<string>>` which is
+a list of list of filenames - each entry in the "outer" list contains a list of identical files by filename.
+
+
