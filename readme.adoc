@@ -7,11 +7,21 @@ The basic approach is:
 . Create a `Dictionary<length, List<string>>` intended to map each file length to a list of filenames
 . Scan the directory and all subdirectories (recursively but using a Stack instead of actual recursion)
 . When we find that we add a second or subsequent filename to the Dictionary for the same length we queue all of those same
-length entries for hashing.
-. Hashing is performed in a different thread - the hashing tasks or _engines_ are started using `Task.Run`. We start as many tasks as there 
-are processors in the system.
-. We use `BlockingCollection` to queue files for hashing. Effortless parallelism using the producer-consumer pattern!
+length entries for hashing. (There is no point in hashing a file until we know we have more than one file of the same length)
+. Hashing is performed on several files in parallel - each file in a different thread - the hashing tasks or _engines_ are started using `Task.Run`.
+We start as many tasks as there are processors in the system (`Environment.ProcessorCount`).
+. We use `BlockingCollection` to queue files for hashing. Any free hashing engine will take the next file in the queue. Effortless
+parallelism using the producer-consumer pattern!
 . When there are no more files to hash, we call `CompleteAdding` on the `BlockingCollection` to indicate that the **producer** is finished.
+. The _consumers_ - i.e. the hashing engines are in a loop as follows:
++
+[source,c#]
+----
+foreach (var item in hashQueue.GetConsumingEnumerable())
+---- 
++
+The producer calling `CompleteAdding` will cause the enumeration to end (and the `foreach` loop to break) when there are no more items in the queue.
+
 . We then wait for all the hashing engines to stop using `Task.WaitAll`.
 
 By using this approach, we can benefit from a large number of CPU cores.
@@ -22,5 +32,17 @@ two files of the same length are unlikely to contain the same data in the genera
 So we take the values from the `Dictionary` ignoring the keys. We convert each value from the Dictionary to a Lookup using `ToLookup`
 on its SHA-1 hash. We end up with an `IEnumerable<Lookup<byte[],...` which we transform into a `List<List<string>>` which is
 a list of list of filenames - each entry in the "outer" list contains a list of identical files by filename.
+
+The expression to transform the dictionary into a List of Lists is as follows:
+
+[source,c#]
+----
+var dups = (from lookup in shaLookups       // each entry is a lookup "bucketed" by SHA1
+            from lubucket in lookup         // take each bucket where the number of items in the bucket is greater than 1
+            where lubucket.Count() > 1
+            let fileList = (from file in lubucket select file.Filename).ToList() // get all the items from the bucket, but we want ONLY THE FILENAME for each item
+            select fileList).ToList();
+----
+
 
 
