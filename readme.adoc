@@ -44,5 +44,14 @@ var dups = (from lookup in shaLookups       // each entry is a lookup "bucketed"
             select fileList).ToList();
 ----
 
+The `let` statement is a convenience - I believe it makes the intent clearer. Instead we can also write the following:
 
+[source,c#]
+----
+var dups = (from lookup in shaLookups
+            from lubucket in lookup
+            where lubucket.Count() > 1
+            select (from fileentry in lubucket select fileentry.Filename).ToList()
+            ).ToList();
 
+----
