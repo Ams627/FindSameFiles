@@ -4,12 +4,13 @@ A very basic example that will find duplicate files by comparing taking the SHA-
 
 The basic approach is:
 
-. Create a `Dictionary<length, List<string>>` intended to map each file length to a list of filenames
-. Scan the directory and all subdirectories (recursively but using a Stack instead of actual recursion)
-. When we find that we add a second or subsequent filename to the Dictionary for the same length we queue all of those same
-length entries for hashing. (There is no point in hashing a file until we know we have more than one file of the same length)
+. Create a `Dictionary<long, List<string>>` intended to map each file length to a list of filenames. (The key of the Dictionary
+is the length of the file. The value is a list of filenames).
+. Scan the directory and all subdirectories (recursively but using a `Stack` instead of actual recursion).
+. When we find that we add a second or subsequent filename to the Dictionary for the same length we queue all of those same.
+length entries for hashing. (There is no point in hashing a file until we know we have more than one file of the same length).
 . Hashing is performed on several files in parallel - each file in a different thread - the hashing tasks or _engines_ are started using `Task.Run`.
-We start as many tasks as there are processors in the system (`Environment.ProcessorCount`).
+We start as many hashing engines as there are logical processors in the system (`Environment.ProcessorCount`).
 . We use `BlockingCollection` to queue files for hashing. Any free hashing engine will take the next file in the queue. Effortless
 parallelism using the producer-consumer pattern!
 . When there are no more files to hash, we call `CompleteAdding` on the `BlockingCollection` to indicate that the **producer** is finished.
@@ -44,7 +45,7 @@ var dups = (from lookup in shaLookups       // each entry is a lookup "bucketed"
             select fileList).ToList();
 ----
 
-The `let` statement is a convenience - I believe it makes the intent clearer. Instead we can also write the following:
+The `let` statement is a convenience - I believe it makes the intent of the code clearer. Instead we can also write the following:
 
 [source,c#]
 ----
