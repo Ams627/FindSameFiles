@@ -47,7 +47,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PDupSearcher.cs" />
+    <Compile Include="DuplicateFileFinder.cs" />
+    <Compile Include="DuplicateFileFinderSerial.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
